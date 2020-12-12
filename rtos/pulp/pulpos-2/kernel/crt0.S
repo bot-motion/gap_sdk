@@ -82,7 +82,7 @@ pos_init_entry:
 
 
 #ifdef ARCHI_CORE_HAS_1_10
-    j pos_illegal_instr
+    j pos_illegal_instr_asm
 #else
     j pos_no_irq_handler
 #endif
@@ -126,9 +126,22 @@ _start:
     la  a0, pos_init_entry
     jalr x0, a0
 
+pos_illegal_instr_asm:
+    add sp, sp, -8
+    sw  x12, 0(sp)
+    sw  x9, 4(sp)
+    la   x12, pos_irq_illegal_instr
+    la   x9, pos_illegal_instr_asm_ret
+    j    pos_irq_call_external_c_function_full
 
-pos_illegal_instr:
-    j pos_illegal_instr
+pos_illegal_instr_asm_ret:
+    lw  x9, 4(sp)
+    lw  x12, 0(sp)
+    add sp, sp, 8
+    mret
+
+
+    j pos_illegal_instr_asm
 
 pos_no_irq_handler:
     mret

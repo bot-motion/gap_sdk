@@ -42,9 +42,12 @@ TIMEOUT ?= 300
 
 PULP_BRIDGE_PATH = $(GAP_SDK_HOME)/tools/pulp_tools/pulp-debug-bridge
 
+checkout:
+	git submodule update --recursive --init
+
 ifeq ($(TARGET_CHIP_FAMILY), GAP8)
-sdk: all autotiler nntool openocd
-all: pulp-os tools gvsoc flasher docs littlefs.build openocd_scripts
+sdk: all autotiler nntool openocd.build
+all: pulp-os tools gvsoc flasher docs littlefs.build openocd_tools.build
 
 clean: littlefs.clean
 	$(RM) $(TARGET_INSTALL_DIR)
@@ -65,7 +68,7 @@ clean: littlefs.clean
 	$(RM) $(TARGET_INSTALL_DIR)
 	$(RM) $(BUILD_DIR)
 endif
-minimal_sdk: freertos pmsis-bsp.checkout pmsis-api.checkout gapy.all examples.checkout openocd_scripts
+minimal_sdk: freertos pmsis-bsp.checkout pmsis-api.checkout gapy.all examples.checkout openocd_tools.build
 freertos: freertos.all openmp.all gap_lib.all
 
 # Rules for installing docs
@@ -117,18 +120,22 @@ gap_lib.checkout:
 
 gap_lib.all: gap_lib.checkout
 
+
 openocd_tools.checkout:
 	git submodule update --init --recursive tools/gap8-openocd-tools
 
-openocd_tools.all: openocd_tools.checkout
+openocd_tools.build:
 	mkdir -p $(INSTALL_DIR)/share/openocd/scripts/tcl
 	cd tools/gap8-openocd-tools && cp -r tcl/* $(INSTALL_DIR)/share/openocd/scripts/tcl
 	cd tools/gap8-openocd-tools && mkdir -p $(INSTALL_DIR)/share/openocd/gap_bins && cp -r gap_bins/* $(INSTALL_DIR)/share/openocd/gap_bins
 
+openocd_tools.all: openocd_tools.checkout openocd_tools.build
+
+
 openocd.checkout:
 	git submodule update --init --recursive tools/gap8-openocd
 
-openocd: openocd.checkout
+openocd.build:
 	cd tools/gap8-openocd && ./bootstrap
 	cd tools/gap8-openocd && ./configure --prefix=$(INSTALL_DIR) --program-prefix=gap8-
 	cd tools/gap8-openocd && make -j install
@@ -136,7 +143,8 @@ openocd: openocd.checkout
 	cd tools/gap8-openocd-tools && cp -r tcl/* $(INSTALL_DIR)/share/openocd/scripts/tcl
 	cd tools/gap8-openocd-tools && mkdir -p $(INSTALL_DIR)/share/openocd/gap_bins && cp -r gap_bins/* $(INSTALL_DIR)/share/openocd/gap_bins
 
-openocd_scripts: openocd_tools.all
+openocd.all: openocd.checkout openocd.build
+
 
 profiler:
 	$(MAKE) -C tools/profiler all

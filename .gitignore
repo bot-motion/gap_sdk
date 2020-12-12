@@ -2,7 +2,6 @@
 __pycache__*
 *.pyc
 *.swp
-*log*
 install
 build
 *.wav

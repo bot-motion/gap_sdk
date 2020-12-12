@@ -144,7 +144,15 @@ typedef enum
      *
      * \param timeout_id UDMA timeout channel ID.
      */
-    PI_I2C_IOCTL_DETACH_TIMEOUT_TX = 11
+    PI_I2C_IOCTL_DETACH_TIMEOUT_TX = 11,
+
+    /**
+     * \brief Enable the timestamp
+     *
+     * Enable the timestamp feature for the i2c interface.
+     */
+    PI_I2C_IOCTL_EN_TIMESTAMP = 12
+
 } pi_i2c_ioctl_e;
 
 /** \brief Initialize an I2C configuration with default values.

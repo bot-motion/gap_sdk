@@ -80,10 +80,10 @@ void pos_irq_set_handler(int irq, void (*handler)())
 
 
 
-void pos_irq_illegal_instr()
+void __attribute__((weak)) pos_irq_illegal_instr()
 {
-  //unsigned int mepc = hal_mepc_read();
-  //rt_warning("Reached illegal instruction (PC: 0x%x, opcode: 0x%x\n", mepc, *(int *)mepc);
+  unsigned int mepc = hal_mepc_read();
+  INIT_WNG("Reached illegal instruction (PC: 0x%x, opcode: 0x%x)\n", mepc, *(int *)mepc);
 }
 
 

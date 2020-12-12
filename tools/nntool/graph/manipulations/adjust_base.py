@@ -41,21 +41,23 @@ class AdjusterBase():
             return None
         return trans
 
-    def apply_trans(self, node, trans, key, index=None):
-        if getattr(node, key) is None:
-            setattr(node, key, [None] * len(node.in_dims))
+    def apply_trans(self, node, trans, direction, index=None):
+        trans_key = 'transpose_' + direction
+        dims_key = direction + '_dims'
+        if getattr(node, trans_key) is None:
+            setattr(node, trans_key, [None] * len(getattr(node, dims_key)))
         if index is None:
-            setattr(node, key, [trans.copy() if cur is None else self.trans_trans(
-                cur, trans) for cur in getattr(node, key)])
+            setattr(node, trans_key, [trans.copy() if cur is None else self.trans_trans(
+                cur, trans) for cur in getattr(node, trans_key)])
         else:
-            getattr(node, key)[index] = trans.copy() if getattr(node, key)[index] is None else self.trans_trans(
-                getattr(node, key)[index], trans)
+            getattr(node, trans_key)[index] = trans.copy() if getattr(node, trans_key)[index] is None else self.trans_trans(
+                getattr(node, trans_key)[index], trans)
 
     def apply_input_trans(self, node, trans: list, index=None):
-        self.apply_trans(node, trans, 'transpose_in', index=index)
+        self.apply_trans(node, trans, 'in', index=index)
 
     def apply_output_trans(self, node, trans: list, index=None):
-        self.apply_trans(node, trans, 'transpose_out', index=index)
+        self.apply_trans(node, trans, 'out', index=index)
 
     @staticmethod
     def move_axis_to_zero_trans(axis: int, shape: list):

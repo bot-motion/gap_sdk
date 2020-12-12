@@ -117,13 +117,7 @@ static int pos_get_div(pos_mram_t *mram, int freq)
         // Round-up the divider to obtain a frequency which is below the maximum.
         int div = (periph_freq + freq - 1) / freq;
         mram->freq = periph_freq / div;
-
-        if (div <= 1)
-            return 0;
-        else if (div & 1)
-            return div - 2;
-        else
-            return div;
+        return div;
     }
 }
 

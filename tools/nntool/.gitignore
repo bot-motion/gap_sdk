@@ -9,4 +9,3 @@ __pycache__
 sample_project/version.log
 .orig
 TestKernels.*
-tests/

@@ -43,9 +43,11 @@ class Concatenation(ConstantMixin, BackendHandler):
         inp_shapes = [input[2].shape for input in inputs]
 
         buffer_idxes = [tensor.buffer_idx for tensor in node.input]
-        if len(set(buffer_idxes)) != len(buffer_idxes):
+        non_zero_idxes = [idx for idx in buffer_idxes if idx != 0]
+        if len(set(non_zero_idxes)) != len(non_zero_idxes):
             raise NotImplementedError(
-                "concats with multiple versions of the same input are not supported. This is normally a graph design problem.")
+                "concats with multiple versions of the same input are not supported. "
+                "This is normally a graph design problem.")
 
         axis = node_opts.Axis()
         if any(inp_shape[axis] is None for inp_shape in inp_shapes):
