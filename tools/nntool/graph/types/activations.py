@@ -169,6 +169,18 @@ class TanHActivationParameters(ActivationParameters):
     def can_equalize(self):
         return False
 
+class SigmoidActivationParameters(ActivationParameters):
+    @property
+    def op_name(self):
+        return "sigmoid"
+
+    def clone(self, name, groupn=None):
+        return SigmoidActivationParameters(name)
+
+    @property
+    def can_equalize(self):
+        return False
+
 class SoftMaxParameters(NoSizeChangeParameters, SingleInputAndOutput):
 
     op_name = "softmax"

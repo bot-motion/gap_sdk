@@ -16,7 +16,7 @@ import logging
 from copy import deepcopy
 
 from graph.matches.matcher import Matcher
-from graph.types import ConcatParameters, ReshapeParameters, TransposeParameters
+from graph.types import ConcatParameters, ReshapeParameters, TransposeParameters, SplitParameters
 from quantization.multiplicative.mult_quantization import MultQuantizationRecord, MultScalableFilterQuantizationRecord
 from quantization.multiplicative.symmetric.symmetric_mult_qtype import SymmetricMultQType
 from utils.graph import Edge, GraphView
@@ -26,7 +26,8 @@ LOG = logging.getLogger("nntool." + __name__)
 
 CAN_PASS = (
     ReshapeParameters,
-    TransposeParameters
+    TransposeParameters,
+    SplitParameters
 )
 
 def set_in_scale(qrec, index, scale):

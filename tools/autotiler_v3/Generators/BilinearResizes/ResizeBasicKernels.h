@@ -41,6 +41,30 @@ typedef struct {
 	unsigned int FirstLineIndex;
 } KerResizeNearestNeighbor_ArgT;
 
+typedef struct {
+	char * __restrict__ In;
+	unsigned int Win;
+	unsigned int Hin;
+	char * __restrict__ Out;
+	unsigned int Wout;
+	unsigned int Hout;
+	unsigned int HTileOut;
+	unsigned int FirstLineIndex;
+} KerResizeBilinearSigned_ArgT;
+
+typedef struct {
+	char * __restrict__ In;
+	unsigned int Win;
+	unsigned int Hin;
+	char * __restrict__ Out;
+	unsigned int Wout;
+	unsigned int Hout;
+	unsigned int HTileOut;
+	unsigned int FirstLineIndex;
+} KerResizeNearestNeighborSigned_ArgT;
+
 void KerResizeBilinear(KerResizeBilinear_ArgT *Arg);
 void KerResizeNearestNeighbor(KerResizeNearestNeighbor_ArgT *Arg);
+void KerResizeBilinearSigned(KerResizeBilinearSigned_ArgT *Arg);
+void KerResizeNearestNeighborSigned(KerResizeNearestNeighborSigned_ArgT *Arg);
 #endif //__IIBASICKERNELS_H__

@@ -90,8 +90,8 @@ class Slice(ConstantMixin, BackendHandler):
 
         starts = tuple(cls.get_constant(inputs[1]))
         ends = tuple(cls.get_constant(inputs[2]))
-        axes = tuple(cls.get_constant(inputs[3])) if inputs[3] else None
-        steps = tuple(cls.get_constant(inputs[4])) if inputs[4] else None
+        axes = tuple(cls.get_constant(inputs[3])) if len(inputs) >= 4 and inputs[3] else None
+        steps = tuple(cls.get_constant(inputs[4])) if len(inputs) >= 5 and inputs[4] else None
 
         return cls._common(node, starts, ends, axes, steps, **kwargs)
 

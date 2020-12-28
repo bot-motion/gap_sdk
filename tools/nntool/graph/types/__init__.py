@@ -15,6 +15,7 @@
 
 from graph.types.activations import (ActivationParameters,
                                      HSigmoidActivationParameters,
+                                     SigmoidActivationParameters,
                                      HSwishActivationParameters,
                                      LeakyActivationParameters,
                                      ReluActivationParameters,

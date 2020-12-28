@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from graph.types.activations import HSigmoidActivationParameters, HSwishActivationParameters, SigmoidActivationParameters, TanHActivationParameters
 import numpy as np
 from graph.types import Conv2DParameters, FcParameters
 from quantization.multiplicative.mult_quantization import \
@@ -44,11 +45,24 @@ class FilterMult(MultQuantizionHandler):
     def _quantize(cls, params, in_qs, out_dtype, stats, **kwargs):
         opts = kwargs['opts']
         fusion = kwargs.get('fusion', None)
+        min_val, max_val = None, None
         if fusion and fusion.fusion_type in ['conv_active_pool', 'conv_active']:
-            # Take stats from activation after the convolution
-            stats = kwargs['all_stats'][NodeId(fusion, fusion.contained_nodes()[1])]
-        o_q = SymmetricMultQType.from_min_max(min_val=stats['range_out'][0]['min'],
-                                              max_val=stats['range_out'][0]['max'],
+            if isinstance(fusion.contained_nodes()[1], (SigmoidActivationParameters, TanHActivationParameters, HSwishActivationParameters)):
+                stats = kwargs['all_stats'][NodeId(fusion, fusion.contained_nodes()[0])]
+            elif fusion and isinstance(fusion.contained_nodes()[1], HSigmoidActivationParameters):
+                # Hard sigmoid implements a RELU, be sure 6 can be representable
+                min_val, max_val = 0, 6
+            elif fusion and isinstance(fusion.contained_nodes()[1], HSigmoidActivationParameters):
+                stats = kwargs['all_stats'][NodeId(fusion, fusion.contained_nodes()[0])]
+                min_val, max_val = 0, stats['range_out'][0]['max'] * 6
+            else:
+                # Take stats from activation after the convolution
+                stats = kwargs['all_stats'][NodeId(fusion, fusion.contained_nodes()[1])]
+
+        if min_val is None or max_val is None:
+            min_val, max_val = stats['range_out'][0]['min'], stats['range_out'][0]['max']
+        o_q = SymmetricMultQType.from_min_max(min_val=min_val,
+                                              max_val=max_val,
                                               dtype=out_dtype)
         weights_q = SymmetricMultQType.from_array(arr=params.weights,
                                                   quantized_dimension=cls.get_quantized_dimension(

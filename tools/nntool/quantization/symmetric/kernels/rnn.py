@@ -57,57 +57,53 @@ sigmoid_table = np.array(
 NEAREST = True
 
 
-def sigmoidLUT(x, qtype):
+def sigmoidLUT(x, qtype=None):
     del qtype
     # Scale [-8:8] into [-10.7:10.7] --> *3/4
     result = np.empty_like(x)
     if not NEAREST:
-        for i, _ in enumerate(x):
-            abs_x = (np.abs(x[i]) * 3) >> 9  # input in Q12
-            if abs_x >= 255:
-                result[i] = 0x7FFF << 10
-            else:
-                ua = sigmoid_table[abs_x]
-                ub = sigmoid_table[abs_x+1]
-                ut = abs_x & 0xFF
-                result[i] = (ua << 9) + ut * (ub-ua)  # Q16*Q8 = Q24
+        abs_x = (np.abs(x) * 3) >> 9 # input in Q12
+        abs_x_masked = np.where(abs_x >= 255, 0, abs_x)
+        ua = sigmoid_table[abs_x_masked]
+        ub = sigmoid_table[abs_x_masked+1]
+        ut = abs_x & 0xFF
+        result = np.where(abs_x >= 255,
+                          0x7FFF << 10,
+                          (ua << 9) + ut * (ub-ua)) # Q16*Q8 = Q24
         result = np.where(x > 0, result + (1 << 9), (1 << (9+16))-result+(1 << 9)-1)
         return result >> 10
     else:
-        for i, _ in enumerate(x):
-            abs_x = (np.abs(x[i]) * 3) >> 9  # input in Q12
-            if abs_x >= 255:
-                result[i] = 0xFFFF
-            else:
-                result[i] = sigmoid_table[abs_x]
+        abs_x = (np.abs(x) * 3) >> 9 # input in Q12
+        abs_x_masked = np.where(abs_x >= 255, 0, abs_x)
+        result = np.where(abs_x >= 255,
+                          0x7FFF << 10,
+                          sigmoid_table[abs_x_masked]) # Q16*Q8 = Q24
         result = np.where(x > 0, result, (1 << 16)-result)
         return result >> 1
 
 
-def tanhLUT(x, qtype):
+def tanhLUT(x, qtype=None):
     del qtype
     # Scale [-8:8] into [-10.7:10.7] --> *3/4
     result = np.empty_like(x)
     if not NEAREST:
-        for i, _ in enumerate(x):
-            abs_x = (np.abs(x[i]) * 3) >> 8  # 2*abs_x
-            if abs_x >= 255:
-                result[i] = 0xFFFF << 8
-            else:
-                ua = sigmoid_table[abs_x]
-                ub = sigmoid_table[abs_x+1]
-                ut = abs_x & 0xFF
-                result[i] = (ua << 8) + ut * (ub-ua)  # Q16*Q8 = Q24
-        result = np.where(x > 0, result - (1 << (9+14)) + (1 << (9-2)), -
-                          result + (1 << (9+14)) + (1 << (9-2)) - 1)
+        abs_x = (np.abs(x) * 3) >> 8 # 2*abs_x
+        abs_x_masked = np.where(abs_x >= 255, 0, abs_x)
+        ua = sigmoid_table[abs_x_masked]
+        ub = sigmoid_table[abs_x_masked+1]
+        ut = abs_x & 0xFF
+        result = np.where(abs_x >= 255,
+                          0xFFFF << 8,
+                          (ua << 8) + ut * (ub-ua)) # Q16*Q8 = Q24
+        result = np.where(x > 0, - (1 << (9+14)) + (1 << (9-2)), 
+                          -result + (1 << (9+14)) + (1 << (9-2)) - 1)
         return result >> 8
     else:
-        for i, _ in enumerate(x):
-            abs_x = (np.abs(x[i]) * 3) >> 8  # 2*abs_x
-            if abs_x >= 255:
-                result[i] = 0xFFFF
-            else:
-                result[i] = sigmoid_table[abs_x]
+        abs_x = (np.abs(x) * 3) >> 8 # 2*abs_x
+        abs_x_masked = np.where(abs_x >= 255, 0, abs_x)
+        result = np.where(abs_x >= 255,
+                          0xFFFF << 10,
+                          sigmoid_table[abs_x_masked])
         result = np.where(x > 0, result - (1 << 15), -result + (1 << 15))
         return result
 
@@ -418,20 +414,24 @@ class LSTMSymmetric(RnnSymmetricMixin, KernelBase):
 
         # INPUT vs WEIGHTS
         # For each cell: compute input_weight * input if there is an input
+        input_gate_scratch = 0
+        forget_gate_scratch = 0
+        cell_scratch = 0
+        output_gate_scratch = 0
         if idx < params.n_input_cells:
-            input_gate_scratch = qrec.scale_input_input(
+            input_gate_scratch += qrec.scale_input_input(
                 args['i_2_i_w'][0].astype(np.int32).dot(input_tensor[idx].astype(np.int32)),
                 0,
                 ktype="symmetric")
-            forget_gate_scratch = qrec.scale_input_forget(
+            forget_gate_scratch += qrec.scale_input_forget(
                 args['i_2_f_w'][0].astype(np.int32).dot(input_tensor[idx].astype(np.int32)),
                 0,
                 ktype="symmetric")
-            cell_scratch = qrec.scale_input_cell(
+            cell_scratch += qrec.scale_input_cell(
                 args['i_2_c_w'][0].astype(np.int32).dot(input_tensor[idx].astype(np.int32)),
                 0,
                 ktype="symmetric")
-            output_gate_scratch = qrec.scale_input_output(
+            output_gate_scratch += qrec.scale_input_output(
                 args['i_2_o_w'][0].astype(np.int32).dot(input_tensor[idx].astype(np.int32)),
                 0,
                 ktype="symmetric")
@@ -502,9 +502,8 @@ class LSTMSymmetric(RnnSymmetricMixin, KernelBase):
             # output = Og[Sq15] * tanh(cell_scratch)[Sq15] -> [Sq30] >> 15 -> [Sq15]
             output_gate_scratch = (output_gate_scratch * cell_scratch) >> 15
 
-        output_gate_scratch = qrec.scale_output(output_gate_scratch,
-                                                0, ktype="symmetric")
-        output_gate_scratch = qrec.out_qs[0].clip(output_gate_scratch)
+        output = qrec.scale_output(output_gate_scratch, 0, ktype="symmetric")
+        output = qrec.out_qs[0].clip(output)
 
         use_projection_weight = 'proj_w' in args and args['proj_w'][0] is not None
         use_projection_bias = 'proj_b' in args and args['proj_b'][0] is not None
@@ -512,7 +511,8 @@ class LSTMSymmetric(RnnSymmetricMixin, KernelBase):
         if use_projection_weight or use_projection_bias:
             raise NotImplementedError("LSTMP is not yet supported by kernel")
 
-        args['i_state'][0] = output_gate_scratch.copy()
+        #args['i_state'][0] = qrec.scale_i_state(output_gate_scratch.copy(), 0, ktype="symmetric")
+        args['i_state'][0] = output.copy()
         if params.lstm_output_c_state:
-            return output_gate_scratch, args['c_state'][0]
-        return output_gate_scratch, None
+            return output, args['c_state'][0]
+        return output, None
