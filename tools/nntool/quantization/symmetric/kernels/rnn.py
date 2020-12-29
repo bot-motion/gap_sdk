@@ -95,14 +95,15 @@ def tanhLUT(x, qtype=None):
         result = np.where(abs_x >= 255,
                           0xFFFF << 8,
                           (ua << 8) + ut * (ub-ua)) # Q16*Q8 = Q24
-        result = np.where(x > 0, - (1 << (9+14)) + (1 << (9-2)), 
+        result = np.where(x > 0, 
+                          result - (1 << (9+14)) + (1 << (9-2)), 
                           -result + (1 << (9+14)) + (1 << (9-2)) - 1)
         return result >> 8
     else:
         abs_x = (np.abs(x) * 3) >> 8 # 2*abs_x
         abs_x_masked = np.where(abs_x >= 255, 0, abs_x)
         result = np.where(abs_x >= 255,
-                          0xFFFF << 10,
+                          0xFFFF,
                           sigmoid_table[abs_x_masked])
         result = np.where(x > 0, result - (1 << 15), -result + (1 << 15))
         return result
