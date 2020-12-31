@@ -40,7 +40,7 @@ from graph.types.linear import FcParameters
 from graph.types.lstm import LSTMParameters
 from graph.types.others import (BinaryOpParameters, CastParameters,
                                 ConcatParameters, CopyParameters,
-                                GatherParametters, GlobalPoolParameters,
+                                GatherParameters, GlobalPoolParameters,
                                 GroupParameters, NoOPParameters, PadParameters,
                                 ReshapeParameters, ReverseParameters,
                                 SplitParameters, StridedSliceParameters,

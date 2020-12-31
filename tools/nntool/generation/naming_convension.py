@@ -14,12 +14,11 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from abc import ABC, abstractmethod
-from graph.types.others import GatherParameters
 from graph.types import (ConcatParameters, Conv2DParameters, FcParameters,
                          SoftMaxParameters, ConvFusionParameters, PoolingParameters,
                          ActivationParameters, MatrixAddParameters, ActivationFusion,
                          MatrixMulParameters, GlobalPoolParameters, ConstantInputParameters,
-                         SplitParameters)
+                         SplitParameters, GatherParameters)
 
 class NamingConvension(ABC):
 

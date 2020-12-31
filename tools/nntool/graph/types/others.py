@@ -270,7 +270,7 @@ class SplitParameters(Transposable):
             self.at_options
         )
 
-class GatherParametters(Parameters, SingleInputAndOutput, SensitiveToOrder):
+class GatherParameters(Parameters, SingleInputAndOutput, SensitiveToOrder):
     op_name = "gather"
 
     def __init__(self, *args,
@@ -278,7 +278,7 @@ class GatherParametters(Parameters, SingleInputAndOutput, SensitiveToOrder):
                  indices=None,
                  **kwargs):
 
-        super(GatherParametters, self).__init__(*args, **kwargs)
+        super(GatherParameters, self).__init__(*args, **kwargs)
         self.axis = axis
         self.indices = np.array(indices)
 
