@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from graph.types.input_output import OutputParameters
 import logging
 from copy import deepcopy
 
@@ -51,6 +52,23 @@ class MatchInsertCopies(Matcher):
 
         return []
 
+    def find_split_to_output_edge(self, G, edge):
+        to_node = edge.to_node
+        if isinstance(to_node, OutputParameters):
+            return [edge]
+        if isinstance(to_node, ReshapeParameters):
+            if to_node.transpose_in or to_node.transpose_out:
+                return None
+            return [edge] + self.find_split_to_output_edge(G, G.out_edges(to_node.name)[0])
+        if isinstance(to_node, NoOPParameters):
+            return [edge] + self.find_split_to_output_edge(G, G.out_edges(to_node.name)[0])
+        if isinstance(to_node, TransposeParameters):
+            _, real_transpose = to_node.real_shape()
+            if len(real_transpose) <= 1:
+                return [edge] + self.find_split_to_output_edge(G, G.out_edges(to_node.name)[0])
+
+        return []
+
     def find_split_concat(self, G, split_node):
         out_edges = G.indexed_out_edges(split_node.name)
         res = [[] for _ in range(len(out_edges))]
@@ -58,6 +76,7 @@ class MatchInsertCopies(Matcher):
         for edge_group in out_edges:
             for edge in edge_group:
                 concat_edges = self.find_concat_edge(G, edge)
+                concat_edges += self.find_split_to_output_edge(G, edge)
                 if concat_edges:
                     found_some = True
                     res[edge.from_idx].append(concat_edges)

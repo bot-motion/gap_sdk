@@ -42,10 +42,10 @@ typedef struct {
 } KerResizeNearestNeighbor_ArgT;
 
 typedef struct {
-	char * __restrict__ In;
+	signed char * __restrict__ In;
 	unsigned int Win;
 	unsigned int Hin;
-	char * __restrict__ Out;
+	signed char * __restrict__ Out;
 	unsigned int Wout;
 	unsigned int Hout;
 	unsigned int HTileOut;
@@ -53,10 +53,10 @@ typedef struct {
 } KerResizeBilinearSigned_ArgT;
 
 typedef struct {
-	char * __restrict__ In;
+	signed char * __restrict__ In;
 	unsigned int Win;
 	unsigned int Hin;
-	char * __restrict__ Out;
+	signed char * __restrict__ Out;
 	unsigned int Wout;
 	unsigned int Hout;
 	unsigned int HTileOut;
