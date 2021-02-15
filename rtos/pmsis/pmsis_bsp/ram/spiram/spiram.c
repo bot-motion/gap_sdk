@@ -35,10 +35,15 @@
 #define RAM_TRACE(level, x...) POS_TRACE(level, "[RAM] " x)
 #endif
 
-#define PRINTF(...) ((void) 0)
-//#define PRINTF printf
-
 #define SPIRAM_CS_PULSE_WIDTH_NS 8000
+
+/**
+ * pi_task :
+ * data[0] = l2_buf
+ * data[1] = size
+ * data[2] = l3_addr
+ * data[3] = flags
+ */
 
 typedef struct
 {
@@ -47,9 +52,6 @@ typedef struct
     pi_task_t *fifo_head;
     pi_task_t *fifo_tail;
     uint32_t *buffer;
-    uint32_t pending_addr;
-    uint32_t pending_data;
-    uint32_t pending_size;
     struct pi_device spi_device;
     extern_alloc_t alloc;
     pi_task_t pending_task;
@@ -106,33 +108,36 @@ static void __spiram_copy_async_exec(pi_device_t *device, struct pi_task *task)
 {
     spiram_t *spiram = (spiram_t *) device->data;
     #if defined(PMSIS_DRIVERS) || defined(__PULPOS2__)
-    uint32_t addr = task->data[0];
-    uint32_t buffer = task->data[1];
-    uint32_t iter_size = task->data[2];
+    uint32_t buffer = task->data[0];
+    uint32_t iter_size = task->data[1];
+    uint32_t addr = task->data[2];
     uint32_t flags = task->data[3];
-    if (iter_size > spiram->page_size)
+    uint32_t mask_addr = (spiram->page_size - 1);
+    mask_addr = addr & mask_addr;
+    if ((mask_addr + iter_size) > spiram->page_size)
     {
-        iter_size = spiram->page_size;
+        iter_size = (spiram->page_size - mask_addr);
     }
     /* Reenqueue */
     task->data[0] += iter_size;
-    task->data[1] += iter_size;
-    task->data[2] -= iter_size;
+    task->data[1] -= iter_size;
+    task->data[2] += iter_size;
     #else
-    uint32_t addr = task->implem.data[0];
-    uint32_t buffer = task->implem.data[1];
-    uint32_t iter_size = task->implem.data[2];
+    uint32_t buffer = task->implem.data[0];
+    uint32_t iter_size = task->implem.data[1];
+    uint32_t addr = task->implem.data[2];
     uint32_t flags = task->implem.data[3];
-    if (iter_size > spiram->page_size)
+    uint32_t mask_addr = (spiram->page_size - 1);
+    mask_addr = addr & mask_addr;
+    if ((mask_addr + iter_size) > spiram->page_size)
     {
-        iter_size = spiram->page_size;
+        iter_size = (spiram->page_size - mask_addr);
     }
     /* Reenqueue */
     task->implem.data[0] += iter_size;
-    task->implem.data[1] += iter_size;
-    task->implem.data[2] -= iter_size;
+    task->implem.data[1] -= iter_size;
+    task->implem.data[2] += iter_size;
     #endif  /* PMSIS_DRIVERS || __PULPOS2__ */
-    PRINTF("Exec here\n");
     pi_task_callback(&(spiram->pending_task), __spiram_task_handler, device);
     pi_spi_copy_async(&(spiram->spi_device), addr, (void *) buffer, iter_size,
                       flags, &(spiram->pending_task));
@@ -141,14 +146,19 @@ static void __spiram_copy_async_exec(pi_device_t *device, struct pi_task *task)
 static void __spiram_task_handler(void *arg)
 {
     uint32_t irq = disable_irq();
+    uint32_t pending_size = 0;
     struct pi_device *device = (struct pi_device *) arg;
     spiram_t *spiram = (spiram_t *) device->data;
     pi_task_t *task = NULL, *next_task = NULL;
-    //task = spiram->pending_task;
     task = spiram->fifo_head;
-    if (task->data[2])
+    #if defined(PMSIS_DRIVERS) || defined(__PULPOS2__)
+    pending_size = task->data[1];
+    #else
+    pending_size = task->implem.data[1];
+    #endif  /* PMSIS_DRIVERS || __PULPOS2__ */
+    if (pending_size)
     {
-        PRINTF("reenqueue remain size=%ld\n", task->data[2]);
+        /* Reenqueue pending data. */
         __spiram_copy_async_exec(device, task);
     }
     else
@@ -156,16 +166,13 @@ static void __spiram_task_handler(void *arg)
         task = __spiram_fifo_task_pop(spiram);
         /* Execute user task. */
         pi_task_push(task);
-        PRINTF("Cur done\n");
         next_task = spiram->fifo_head;
         if (next_task != NULL)
         {
-            PRINTF("Next is poped\n");
             /* Exec next task. */
-            __spiram_copy_async_exec(device, task);
+            __spiram_copy_async_exec(device, next_task);
         }
     }
-    PRINTF("handler out\n");
     restore_irq(irq);
 }
 
@@ -175,16 +182,15 @@ static int __spiram_task_enqueue(spiram_t *spiram, uint32_t addr, void *buffer,
     uint32_t irq = disable_irq();
     uint32_t status = 0;
     uint32_t flags = ext2loc ? PI_SPI_COPY_EXT2LOC : PI_SPI_COPY_LOC2EXT;
-    PRINTF("Enqueue %d, buffer=%lx, size=%ld\n", ext2loc, buffer, size);
     #if defined(PMSIS_DRIVERS) || defined(__PULPOS2__)
-    task->data[0] = addr;
-    task->data[1] = (uint32_t) buffer;
-    task->data[2] = size;
+    task->data[0] = (uint32_t) buffer;
+    task->data[1] = size;
+    task->data[2] = addr;
     task->data[3] = (flags | PI_SPI_CS_AUTO | PI_SPI_LINES_QUAD);
     #else
-    task->implem.data[0] = addr;
-    task->implem.data[1] = (uint32_t) buffer;
-    task->implem.data[2] = size;
+    task->implem.data[0] = (uint32_t) buffer;
+    task->implem.data[1] = size;
+    task->implem.data[2] = addr;
     task->implem.data[3] = (flags | PI_SPI_CS_AUTO | PI_SPI_LINES_QUAD);
     #endif  /* PMSIS_DRIVERS || __PULPOS2__ */
     status = __spiram_fifo_task_enqueue(spiram, task);
@@ -215,9 +221,6 @@ static int spiram_open(struct pi_device *device)
     spiram->fifo_head = NULL;
     spiram->fifo_tail = NULL;
     spiram->page_size = 1024;
-    spiram->pending_addr = 0;
-    spiram->pending_data = 0;
-    spiram->pending_size = 0;
 
     device->data = (void *)spiram;
 
@@ -342,9 +345,6 @@ static void spiram_copy_async(struct pi_device *device, uint32_t addr,
                               pi_task_t *task)
 {
     spiram_t *spiram = (spiram_t *)device->data;
-    //int flags  = ext2loc ? PI_SPI_COPY_EXT2LOC : PI_SPI_COPY_LOC2EXT;
-
-    //pi_spi_copy_async(&spiram->spi_device, addr, data, size, flags | PI_SPI_CS_AUTO | PI_SPI_LINES_QUAD, task);
     if (__spiram_task_enqueue(spiram, addr, data, size, ext2loc, task))
     {
         return;
