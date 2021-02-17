@@ -10,8 +10,8 @@ SRC = \
 SDL_CFLAGS = $(shell sdl2-config --cflags)
 SDL_LDFLAGS = $(shell sdl2-config --libs)
 
-CV_CFLAGS = $(shell pkg-config opencv --cflags)
-CV_LDFLAGS = $(shell pkg-config opencv --libs)
+CV_CFLAGS = $(shell pkg-config opencv4 --cflags)
+CV_LDFLAGS = $(shell pkg-config opencv4 --libs)
 
 ifneq '$(SDL_CFLAGS)$(SDL_LDFLAGS)' ''
 USE_SDL=1
