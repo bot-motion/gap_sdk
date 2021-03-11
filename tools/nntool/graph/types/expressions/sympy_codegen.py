@@ -56,7 +56,7 @@ class StructMember(Token):
 
 #pylint: disable=no-init
 class Struct(Type):
-    __slots__ = Type.__slots__ + ['members']
+    __slots__ = list(Type.__slots__) + ['members']
 
 
 #pylint: disable=no-init
@@ -66,7 +66,7 @@ class TypeDef(Token):
 
 #pylint: disable=no-init
 class StructVariable(Variable):
-    __slots__ = ['parent'] + Variable.__slots__
+    __slots__ = ['parent'] + list(Variable.__slots__)
 
 
 #pylint: disable=no-init
